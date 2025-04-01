@@ -144,4 +144,5 @@ if __name__ == '__main__':
     ax_right.set_xlabel('')
     ax_right.set_ylabel('')
     ax_right.spines[['top', 'right', 'bottom', 'left']].set_visible(False)  # Clean up
+    fig.savefig('flow.png', dpi = 300)
     plt.show()
