@@ -8,7 +8,7 @@ import seaborn as sns
 from torchdyn.core import NeuralODE
 from torchcfm.utils import torch_wrapper
 
-def sample_conditional_pt(x0, x1, t, sigma):
+def sample_conditional_pt(x0: Tensor, x1: Tensor, t: Tensor, sigma: float):
     '''
     Code taken from this tutorial:
     https://github.com/atong01/conditional-flow-matching/blob/main/examples/2D_tutorials/Flow_matching_tutorial.ipynb
@@ -52,18 +52,15 @@ def sample_x1(batch_size: int):
     return x1.unsqueeze(-1)
 
 if __name__ == '__main__':
-
     ## define network
     h_size = 32
     batch_size = 128
-
     flow = nn.Sequential(
         nn.Linear(2, h_size),
         nn.ReLU(),
         nn.Linear(h_size, h_size),
         nn.ReLU(),
-        nn.Linear(h_size, 1)
-    )
+        nn.Linear(h_size, 1))
 
     opt = torch.optim.Adam(flow.parameters(), lr = 1e-3)
 
@@ -73,29 +70,32 @@ if __name__ == '__main__':
     for i in range(iterations):
         opt.zero_grad()
 
+        ## sample source and target distributions
         x0 = sample_x0(batch_size)
         x1 = sample_x1(batch_size)
         t = torch.rand(batch_size)
-
         xt = sample_conditional_pt(x0, x1, t, sigma = 0.01)
+
+        ## predict velocity field at time t
         vt = flow(torch.cat([xt, t[:, None]], dim = 1))
         loss = torch.mean(torch.square(vt - (x1 - x0)))
         loss.backward()
         opt.step()
 
+        ## log
         loss_hist.append(loss.item())
         print(f'Iteration: {i} Loss: {loss.item()}')
-        
-    node = NeuralODE(torch_wrapper(flow), solver = 'dopri5', sensitivity = 'adjoint', atol = 1e-4, rtol = 1e-4)
 
+    ## propagate dynamical system
+    node = NeuralODE(torch_wrapper(flow), solver = 'dopri5', sensitivity = 'adjoint', atol = 1e-4, rtol = 1e-4)
     timesteps = 100
     t_span = torch.linspace(0, 1, timesteps)
-
     with torch.no_grad():
         traj = node.trajectory(
             sample_x0(20000),
             t_span = t_span).squeeze()
-
+        
+    ## create a 2d heatmap of the flow
     ## traj is (time x samples)
     bins = 100  # Number of bins for the heatmap
     heatmap, _, _ = np.histogram2d(
@@ -115,7 +115,6 @@ if __name__ == '__main__':
     '''
     The code below is for generating the plot.
     '''
-    # fig = plt.figure(figsize=(8, 6))
     fig = plt.figure()
     gs = GridSpec(1, 3, width_ratios=[1, 4, 1], wspace = 0.05)
     
